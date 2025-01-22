@@ -72,7 +72,7 @@ class MyClient(discord.Client):
 
     def generate_klaxon_mp4(self, klaxon_word):
         def text2png(text):
-            width, height = 1417, 1072
+            width, height = 1418, 1072
             max_width = width - 40  # margin
             default_font_size = 200
             min_font_size = 30 # minimum font size, no multiline text yet...
