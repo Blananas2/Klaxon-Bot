@@ -1,6 +1,6 @@
 import discord
 import json
-
+import time
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -16,12 +16,21 @@ class MyClient(discord.Client):
     word = "test"
     usr = None
     ignored = []
+    timeof = 0  # time since said and not reset
 
     async def on_ready(self):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')
 
     async def on_message(self, message):
+        
+        # if been 24h since said and not reset
+        if (self.timeof > 0) and (time.time() >= self.timeof + 86400):
+            self.word = "klaxon"
+            self.generate_klaxon_mp4(self.word.upper()) # generate video
+            self.timeof = 0
+            await self.usr.send("I haven't heard from you in 24 hours, resetting the word to \"klaxon\"")
+            return
 
         # does nothing if bots say it
         if message.author == self.user:
@@ -52,6 +61,7 @@ class MyClient(discord.Client):
 
             self.word = None
             await message.author.send("Please respond with a new Klaxon word. Choose wisely.")
+            self.timeof = time.time()
             print("{0} said by {1} in {2}".format(message.content, message.author.name, message.channel.name))
             return
     
@@ -61,6 +71,7 @@ class MyClient(discord.Client):
             if tempword.isalpha():
                 self.word = tempword
                 await message.author.send("Setting word...")
+                self.timeof = 0
                 self.generate_klaxon_mp4(self.word.upper()) # generate video
                 await message.author.send("You have selected \'{0}\' as the new Klaxon word.".format(self.word))
             else:
