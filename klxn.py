@@ -15,7 +15,8 @@ class MyClient(discord.Client):
 
     word = "test"
     usr = None
-    ignored = []
+    ignored = [] # ignored channels
+    optedout = [] # opted out users
     timeof = 0  # time since said and not reset
 
     async def on_ready(self):
@@ -46,8 +47,22 @@ class MyClient(discord.Client):
                 await message.channel.send("<#{0}> ignored.".format(message.channel.id))
             return
         
+        # allow opt-out of users
+        if message.content.startswith("k!optout"):
+            if message.author in self.optedout:
+                self.optedout.remove(message.author)
+                await message.channel.send("You have opted-in to being klaxoned.")
+            else:
+                self.optedout.append(message.author)
+                await message.channel.send("You have opted-out of being klaxoned.")
+            return
+        
         # do not listen to ignored channels (except ignore command)
         if message.channel.id in self.ignored:
+            return
+        
+        # ignore opted-out users
+        if message.author in self.optedout:
             return
 
         # klaxon word finder
