@@ -2,6 +2,7 @@ import discord
 import json
 import time
 import cv2
+import re
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from moviepy.editor import ImageClip, concatenate_videoclips, AudioFileClip
@@ -14,6 +15,7 @@ with open('config.json') as f:
 class MyClient(discord.Client):
 
     word = "test"
+    rgx = rf"\b{word}\b"
     usr = None
     ignored = []
     timeof = 0  # time since said and not reset
@@ -27,6 +29,7 @@ class MyClient(discord.Client):
         # if been 24h since said and not reset
         if (self.timeof > 0) and (time.time() >= self.timeof + 86400):
             self.word = "klaxon"
+            self.rgx = rf"\bklaxon\b"
             self.generate_klaxon_mp4(self.word.upper()) # generate video
             self.timeof = 0
             await self.usr.send("I haven't heard from you in 24 hours, resetting the word to \"klaxon\"")
@@ -51,7 +54,7 @@ class MyClient(discord.Client):
             return
 
         # klaxon word finder
-        if self.word and (self.word in message.content.lower()):
+        if self.word and (re.search(self.rgx, message.content.lower()):
             self.usr = message.author
             
             if self.word == "test":
@@ -60,6 +63,7 @@ class MyClient(discord.Client):
                 await message.channel.send("# :camera_with_flash: The Klaxon word \'{0}\' was said by <@{1}> and earned them -10 points! :camera_with_flash:".format(self.word, message.author.id), file=discord.File("klaxon.mp4", filename="klaxon.mp4"))
 
             self.word = None
+            self.rgx = None
             await message.author.send("Please respond with a new Klaxon word. Choose wisely.")
             self.timeof = time.time()
             print("{0} said by {1} in {2}".format(message.content, message.author.name, message.channel.name))
@@ -70,6 +74,7 @@ class MyClient(discord.Client):
             tempword = message.content.lower().strip()
             if tempword.isalpha():
                 self.word = tempword
+                self.rgx = rf"\b{tempword}\b"
                 await message.author.send("Setting word...")
                 self.timeof = 0
                 self.generate_klaxon_mp4(self.word.upper()) # generate video
