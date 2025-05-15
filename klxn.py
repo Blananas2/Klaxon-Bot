@@ -23,7 +23,7 @@ class MyClient(discord.Client):
     # sql presets
     create_table = """CREATE TABLE IF NOT EXISTS words (
         server_id INTEGER PRIMARY KEY,
-        word TEXT DEFAULT 'test',
+        word TEXT DEFAULT 'klaxon',
         timeof INTEGER DEFAULT 0 NOT NULL,
         user INTEGER DEFAULT NULL
     );"""
@@ -35,7 +35,7 @@ class MyClient(discord.Client):
 
     async def on_ready(self):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
-        print('------')
+        print("Klaxon Bot v1.0")
         # creates a SQLite 3 database if you don't have one
         try:
             with sqlite3.connect("serverwords.db") as conn:
@@ -45,6 +45,8 @@ class MyClient(discord.Client):
                 conn.commit()
         except sqlite3.OperationalError as e:
             print("Failed to open database:", e)
+            
+        print('------')
 
     async def on_message(self, message):
         
@@ -52,7 +54,7 @@ class MyClient(discord.Client):
         serverid = message.guild.id if (type(message.channel) is not discord.channel.DMChannel) else None
         
         # if not currently in dictionary of servers (like on bot reset), check if in sql, add if so, make new entry if not
-        if serverid not in self.words:
+        if serverid and serverid not in self.words:
             with sqlite3.connect("serverwords.db") as conn:
                 cursor = conn.cursor()
                 cursor.execute(self.find_table, (serverid,))
@@ -60,14 +62,14 @@ class MyClient(discord.Client):
                 if exists:
                     self.words[serverid] = exists[1:]
                 else:
-                    cursor.execute(self.insert_table, (serverid, "test", 0, None))
-                    self.words[serverid] = ("test", 0, None)
+                    cursor.execute(self.insert_table, (serverid, "klaxon", 0, None))
+                    self.words[serverid] = ("klaxon", 0, None)
                     
-        print(self.words[serverid])
+        print((self.words[serverid]) if serverid else ("DM from " + message.author.display_name))
                     
         # if been 24h since said and not reset
-        if (self.words[serverid][1] > 0) and (time.time() >= self.words[serverid][1] + 86400):
-            await self.words[serverid][2].send("I haven't heard from you in 24 hours, resetting the word to \"klaxon\"")
+        if serverid and (self.words[serverid][1] > 0) and (time.time() >= self.words[serverid][1] + 86400): # 86400 is 24h
+            await self.get_user(self.words[serverid][2]).send("I haven't heard from you in 24 hours, resetting the word to \"klaxon\"")
             self.words[serverid] = ("klaxon", 0, None)
             self.generate_klaxon_mp4(self.words[serverid][0].upper()) # generate video
             return
@@ -105,16 +107,18 @@ class MyClient(discord.Client):
             return
 
         # klaxon word finder
-        if self.words[serverid][0] and (self.check_in_message(message.content, self.words[serverid][0])):
-            self.generate_klaxon_mp4(self.words[serverid][0].upper()) # generate video          
-            if self.words[serverid][0] == "test":
-                await message.channel.send("# :camera_with_flash: The Klaxon word \'{0}\' was said by <@{1}> and earned them -10 points! :camera_with_flash:".format(self.words[serverid][0], message.author.id), file=discord.File("klaxon_test.mp4", filename="klaxon.mp4"))
-            else:
-                await message.channel.send("# :camera_with_flash: The Klaxon word \'{0}\' was said by <@{1}> and earned them -10 points! :camera_with_flash:".format(self.words[serverid][0], message.author.id), file=discord.File("klaxon.mp4", filename="klaxon.mp4"))
+        if serverid and self.words[serverid][0] and (self.check_in_message(message.content, self.words[serverid][0])):
+            wordsaid = self.words[serverid][0]
             self.words[serverid] = (None, time.time(), message.author.id)
             with sqlite3.connect("serverwords.db") as conn:
                 cursor = conn.cursor()
                 cursor.execute(self.update_table, (None, time.time(), message.author.id, serverid))
+            await message.channel.typing() # posts klaxon bot is typing... while generating video
+            self.generate_klaxon_mp4(wordsaid.upper()) # generate video          
+            if self.words[serverid][0] == "test":
+                await message.channel.send("# :camera_with_flash: The Klaxon word \'{0}\' was said by <@{1}> and earned them -10 points! :camera_with_flash:".format(wordsaid, message.author.id), file=discord.File("klaxon_test.mp4", filename="klaxon.mp4"))
+            else:
+                await message.channel.send("# :camera_with_flash: The Klaxon word \'{0}\' was said by <@{1}> and earned them -10 points! :camera_with_flash:".format(wordsaid, message.author.id), file=discord.File("klaxon.mp4", filename="klaxon.mp4"))
             await message.author.send("Please respond with a new Klaxon word. Choose wisely.")
             print("{0} said by {1} in {2}".format(message.content, message.author.name, message.channel.name))
             return
@@ -142,7 +146,7 @@ class MyClient(discord.Client):
     @staticmethod
     def check_in_message(mess, word):
         translator = str.maketrans(string.punctuation, ' '*len(string.punctuation)) # map punctuation to space (based)
-        return word in mess.translate(translator).split()
+        return word in mess.lower().translate(translator).split()
 
     # make mp4 file
     def generate_klaxon_mp4(self, klaxon_word):
