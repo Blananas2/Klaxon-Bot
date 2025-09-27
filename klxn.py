@@ -155,8 +155,8 @@ class MyClient(discord.Client):
             max_width = width - 40  # margin
             default_font_size = 200
             min_font_size = 30 # minimum font size, no multiline text yet...
-
-            font_path = "FranklinGothic.ttf"
+            
+            font_path = "FranklinGothic.ttf" if text.isascii() else "UKIJCJK.ttf"
             font_size = default_font_size
             font = ImageFont.truetype(font_path, font_size)
 
